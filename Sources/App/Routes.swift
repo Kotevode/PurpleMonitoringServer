@@ -2,25 +2,28 @@ import Vapor
 
 final class Routes: RouteCollection {
     func build(_ builder: RouteBuilder) throws {
-        builder.get("hello") { req in
-            var json = JSON()
-            try json.set("hello", "world")
-            return json
-        }
-
-        builder.get("plaintext") { req in
-            return "Hello, world!"
+        
+        builder.socket("execute") { rq, ws in
+            
+            ws.onText = { ws, text in
+                do {
+                    let command = try ExecuteCommand(json: JSON(bytes: text.makeBytes()))
+                    let executor = Executor(
+                        logReceivers: [
+                            WebSocketLogReceiver(webSocket: ws)
+                        ]
+                    )
+                    try executor.execute(command: command)
+                    try ws.close()
+                } catch let e {
+                    debugPrint(e.localizedDescription)
+                    try ws.close(statusCode: 32, reason: e.localizedDescription)
+                }
+            }
+            
         }
         
-        // response to requests to /info domain
-        // with a description of the request
-        builder.get("info") { req in
-            return req.description
-        }
-
-       builder.get("*") { req in return req.description }
-        
-        try builder.resource("posts", PostController.self)
+        try builder.resource("available", ProgramController.self)
     }
 }
 
