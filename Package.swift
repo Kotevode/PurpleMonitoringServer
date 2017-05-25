@@ -3,7 +3,8 @@ import PackageDescription
 let package = Package(
     name: "PurpleMonitoringServer",
     targets: [
-        Target(name: "App"),
+		Target(name: "Model"),
+        Target(name: "App", dependencies: ["Model"]),
         Target(name: "Run", dependencies: ["App"]),
     ],
     dependencies: [

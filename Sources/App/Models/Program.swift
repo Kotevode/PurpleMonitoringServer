@@ -10,12 +10,12 @@ import Vapor
 import FluentProvider
 import HTTP
 
-final class Program: Model {
+public final class Program: Model {
     
-    let storage = Storage()
-    var name: String
-    var path: String
-    var description: String?
+    public let storage = Storage()
+    public var name: String
+    public var path: String
+    public var description: String?
     
     init(name: String, path: String, description: String?) {
         self.name = name
@@ -23,13 +23,13 @@ final class Program: Model {
         self.description = description
     }
     
-    init(row: Row) throws {
+    public init(row: Row) throws {
         name = try row.get("name")
         path = try row.get("path")
         description = try row.get("description")
     }
 
-    func makeRow() throws -> Row {
+    public func makeRow() throws -> Row {
         var row = Row()
         try row.set("name", name)
         try row.set("path", path)
@@ -41,20 +41,17 @@ final class Program: Model {
 
 extension Program: Preparation {
     
-    static func prepare(_ database: Database) throws {
+    public static func prepare(_ database: Database) throws {
         try database.create(self, closure: { (creator) in
             creator.id()
             creator.string("name")
             creator.string("path")
             creator.string("description",
-                           length: nil,
-                           optional: true,
-                           unique: false,
-                           default: nil)
+                           optional: true)
         })
     }
     
-    static func revert(_ database: Database) throws {
+    public static func revert(_ database: Database) throws {
         try database.delete(self)
     }
     
@@ -62,7 +59,7 @@ extension Program: Preparation {
 
 extension Program: JSONConvertible {
     
-    func makeJSON() throws -> JSON {
+    public func makeJSON() throws -> JSON {
         var json = JSON()
         try json.set("id", id)
         try json.set("name", name)
@@ -71,7 +68,7 @@ extension Program: JSONConvertible {
         return json
     }
     
-    convenience init(json: JSON) throws {
+    public convenience init(json: JSON) throws {
         self.init(
             name: try json.get("name"),
             path: try json.get("path"),
@@ -81,17 +78,9 @@ extension Program: JSONConvertible {
     
 }
 
-extension Program: NodeConvertible {
+extension Program: NodeInitializable {
     
-    func makeNode(in context: Context?) throws -> Node {
-        var node = Node(context)
-        try node.set("id", id)
-        try node.set("name", name)
-        try node.set("path", path)
-        return node
-    }
-    
-    convenience init(node: Node) throws {
+    public convenience init(node: Vapor.Node) throws {
         self.init (
             name: try node.get("name"),
             path: try node.get("path"),

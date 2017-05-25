@@ -7,6 +7,7 @@
 //
 
 import Foundation
+import Model
 
 final class Executor {
     
@@ -23,7 +24,7 @@ final class Executor {
         case cannotReadPipe
     }
     
-    func execute(command: ExecuteCommand) throws {
+    func execute(command: Command) throws {
         let pipePath = try createPipeFor(program: command.program)
         
         let p = Process()

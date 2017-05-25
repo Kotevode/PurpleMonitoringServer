@@ -1,4 +1,5 @@
 import Vapor
+import Model
 
 final class Routes: RouteCollection {
     func build(_ builder: RouteBuilder) throws {
@@ -7,7 +8,7 @@ final class Routes: RouteCollection {
             
             ws.onText = { ws, text in
                 do {
-                    let command = try ExecuteCommand(json: JSON(bytes: text.makeBytes()))
+                    let command = try Command(json: JSON(bytes: text.makeBytes()))
                     let executor = Executor(
                         logReceivers: [
                             WebSocketLogReceiver(webSocket: ws)
@@ -15,9 +16,12 @@ final class Routes: RouteCollection {
                     )
                     try executor.execute(command: command)
                     try ws.close()
+                } catch Command.CommandError.wrongJSON {
+                    try ws.close(statusCode: 4000, reason: "Cannot parse command from JSON")
+                } catch Command.CommandError.programNotFound(let id) {
+                    try ws.close(statusCode: 4000, reason: "Program \(id) not found")
                 } catch let e {
-                    debugPrint(e.localizedDescription)
-                    try ws.close(statusCode: 32, reason: e.localizedDescription)
+                    try ws.close(statusCode: 4000, reason: e.localizedDescription)
                 }
             }
             

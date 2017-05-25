@@ -1,4 +1,5 @@
 import FluentProvider
+import Model
 
 extension Config {
     
@@ -19,7 +20,7 @@ extension Config {
     /// Add all models that should have their
     /// schemas prepared before the app boots
     private func setupPreparations() throws {
-        preparations = [Program.self]
+        preparations = [Program.self, Node.self]
     }
     
 }

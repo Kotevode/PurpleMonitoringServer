@@ -7,6 +7,7 @@
 //
 
 import Vapor
+import Model
 
 final class ProgramController: ResourceRepresentable {
     
