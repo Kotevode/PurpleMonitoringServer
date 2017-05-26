@@ -12,43 +12,51 @@ import Model
 final class Executor {
     
     public var logReceivers = [LogReceiver]()
+    var process: Process
+    var pipePath: String
+
     
-    init() {}
-    
-    init(logReceivers: [LogReceiver]) {
+    init(logReceivers: [LogReceiver], command: Command) {
         self.logReceivers = logReceivers
+        process = Process()
+        process.launchPath = command.program.path
+        pipePath = Utils.generatePipePath(program: command.program)
+        process.arguments = [pipePath]
     }
     
     enum ExecutorError: Error {
-        case cannotCreatePipe
-        case cannotReadPipe
+        case terminated(message: String)
     }
     
-    func execute(command: Command) throws {
-        let pipePath = try createPipeFor(program: command.program)
-        
-        let p = Process()
-        p.launchPath = command.program.path
-        p.arguments = [pipePath]
-        p.launch()
-        
+    func execute() throws {
+        try createPipe()
+        process.launch()
         guard let filehandle = FileHandle(forReadingAtPath: pipePath) else {
-            throw ExecutorError.cannotReadPipe
+            throw ExecutorError.terminated(message: "Cannot open pipe")
         }
         filehandle.readabilityHandler = handleLog(handle:)
-        
-        p.waitUntilExit()
-        filehandle.closeFile()
-        remove(pipePath.cString(using: .utf8))
+        process.waitUntilExit()
+        removePipe()
+        if process.terminationReason == .uncaughtSignal {
+            throw ExecutorError.terminated(
+                message: "Execution aborted with error code \(process.terminationStatus)"
+            )
+        }
     }
     
-    func createPipeFor(program: Program) throws -> String {
-        let fifoPath = "/tmp/\(Date().timeIntervalSince1970)_" +
-        "\(program.name.replacingOccurrences(of: " ", with: ""))"
-        guard mkfifo(fifoPath.cString(using: .utf8), S_IRWXO | S_IRWXG | S_IRWXU) >= 0 else {
-            throw ExecutorError.cannotCreatePipe
+    func terminate() {
+        process.terminate()
+        removePipe()
+    }
+    
+    func createPipe() throws  {
+        guard mkfifo(pipePath.cString(using: .utf8), S_IRWXO | S_IRWXG | S_IRWXU) >= 0 else {
+            throw ExecutorError.terminated(message: "Cannot create pipe")
         }
-        return fifoPath
+    }
+    
+    func removePipe() {
+        remove(pipePath.cString(using: .utf8))
     }
     
     func handleLog(handle: FileHandle) {

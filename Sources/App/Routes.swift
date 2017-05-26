@@ -6,28 +6,40 @@ final class Routes: RouteCollection {
         
         builder.socket("execute") { rq, ws in
             
+            var executor: Executor?
+            
             ws.onText = { ws, text in
                 do {
                     let command = try Command(json: JSON(bytes: text.makeBytes()))
-                    let executor = Executor(
+                    executor = Executor(
                         logReceivers: [
                             WebSocketLogReceiver(webSocket: ws)
-                        ]
+                        ],
+                        command: command
                     )
-                    try executor.execute(command: command)
-                    try ws.close()
-                } catch Command.CommandError.wrongJSON {
-                    try ws.close(statusCode: 4000, reason: "Cannot parse command from JSON")
-                } catch Command.CommandError.programNotFound(let id) {
-                    try ws.close(statusCode: 4000, reason: "Program \(id) not found")
+                    try executor!.execute()
+                    try ws.close(statusCode: 4000)
+                } catch Command.CommandError.initError(let message) {
+                    debugPrint(message)
+                    try ws.close(statusCode: 4001, reason: message)
+                } catch Executor.ExecutorError.terminated(message: let message) {
+                    debugPrint(message)
+                    try ws.close(statusCode: 4002, reason: message)
                 } catch let e {
-                    try ws.close(statusCode: 4000, reason: e.localizedDescription)
+                    try ws.close(statusCode: 4001, reason: e.localizedDescription)
+                }
+            }
+            
+            ws.onClose = { ws, code, reason, _ in
+                executor?.terminate()
+                if let reason = reason {
+                    debugPrint("Connection closed, reason: \(reason)")
                 }
             }
             
         }
         
-        try builder.resource("available", ProgramController.self)
+        try builder.resource("programs", ProgramController.self)
     }
 }
 

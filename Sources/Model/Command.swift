@@ -11,8 +11,7 @@ import JSON
 public final class Command {
     
     public enum CommandError: Error {
-        case wrongJSON
-        case programNotFound(id: Int)
+        case initError(message: String)
     }
     
     public var program: Program
@@ -31,10 +30,11 @@ extension Command: JSONInitializable {
         guard
             let id = json["program"]?.int,
             let nodes = json["nodes"]?.array else {
-                throw CommandError.wrongJSON
+                throw CommandError.initError(
+                    message: "Cannot parse json: \(json)")
         }
         guard let program = try Program.find(id) else {
-            throw CommandError.programNotFound(id: id)
+            throw CommandError.initError(message: "Program \(id) not found ")
         }
         self.init(
             program: program,
