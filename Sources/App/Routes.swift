@@ -10,13 +10,20 @@ final class Routes: RouteCollection {
             
             ws.onText = { ws, text in
                 do {
+                    // Десериализация полученной команды
                     let command = try Command(json: JSON(bytes: text.makeBytes()))
+                    
+                    // Инициализация запуска
                     executor = Executor(
                         logReceivers: [
-                            WebSocketLogReceiver(webSocket: ws)
+                            WebSocketLogReceiver(webSocket: ws),
+                            ConsoleLogReceiver(),
                         ],
-                        command: command
+                        command: command,
+                        mpiexec: "/usr/local/bin/mpiexec"
                     )
+                    
+                    //
                     try executor!.execute()
                     try ws.close(statusCode: 4000)
                 } catch Command.CommandError.initError(let message) {

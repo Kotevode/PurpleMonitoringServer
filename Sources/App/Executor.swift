@@ -14,14 +14,18 @@ final class Executor {
     public var logReceivers = [LogReceiver]()
     var process: Process
     var pipePath: String
-
     
-    init(logReceivers: [LogReceiver], command: Command) {
+    init(logReceivers: [LogReceiver], command: Command, mpiexec: String) {
         self.logReceivers = logReceivers
         process = Process()
-        process.launchPath = command.program.path
+        process.launchPath = mpiexec
         pipePath = Utils.generatePipePath(program: command.program)
-        process.arguments = [pipePath]
+        process.arguments = [
+            "-n",
+            "4",
+            command.program.path,
+            pipePath
+        ]
     }
     
     enum ExecutorError: Error {
@@ -60,12 +64,16 @@ final class Executor {
     }
     
     func handleLog(handle: FileHandle) {
+        // Считывание 8 байт как размер сообщения
         let sizeData = handle.readData(ofLength: 8)
         let size = sizeData.withUnsafeBytes({ (ptr) -> UInt64 in
             return ptr.pointee
         })
+        // Считывание size байт как тело сообщения
         let messageData = handle.readData(ofLength: Int(size))
-        if let message = String(data: messageData, encoding: .utf8) {
+        if let message = String(data: messageData,
+                                encoding: .utf8) {
+            // Передача сообщения всем конечным получателям
             logReceivers.forEach { $0.receive(message: message) }
         }
     }
